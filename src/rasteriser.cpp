@@ -1,6 +1,8 @@
 #include "rasteriser.hpp"
 #include "utilities/lodepng.h"
 #include <vector>
+#include <iostream>
+#include <chrono>
 
 // --- Overview ---
 
@@ -333,7 +335,9 @@ void rasteriseTriangles( Mesh &mesh,
  * @param height          height of the output image
  */
 void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsigned int height) {
-	// We first need to allocate some buffers.
+
+        auto start = std::chrono::high_resolution_clock::now();
+        // We first need to allocate some buffers.
 
 	// The framebuffer contains the image being rendered.
 	std::vector<unsigned char> frameBuffer;
@@ -371,8 +375,13 @@ void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsig
 	std::cout << "complete!" << std::endl;
 
 	rasteriseTriangles(mesh, transformedVertexBuffer, transformedNormalBuffer, frameBuffer, depthBuffer, width, height);
+        auto end = std::chrono::high_resolution_clock::now();
 
-	std::cout << "Finished rendering!" << std::endl;
+        auto timeTaken = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+
+        std::cout << "time spent function rasterise " << double(timeTaken) << " ns" <<std::endl;
+
+	std::cout << "Finished rendering!!" << std::endl;
 
 	std::cout << "Writing image to '" << outputImageFile << "'..." << std::endl;
 
@@ -382,4 +391,5 @@ void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsig
 	{
 		std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
 	}
+
 }
