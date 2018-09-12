@@ -1,8 +1,8 @@
 #include "rasteriser.hpp"
 #include "utilities/lodepng.h"
 #include <vector>
-#include <iostream>
 #include <chrono>
+
 
 // --- Overview ---
 
@@ -231,10 +231,26 @@ void rasteriseTriangles( Mesh &mesh,
 {
 	// We rasterise one triangle at a time
 	unsigned int triangleCount = mesh.indexCount / 3;
-	for(unsigned int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+	auto test = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> time_spanPixel_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
+	std::chrono::duration<double> time_spanNormal_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
+	std::chrono::duration<double> time_spanShader_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
+
+
+	// one time memory allocation
+	float4 *normal0 = new float4();
+	float4 *normal1 = new float4();
+	float4 *normal2 = new float4();
+	float3 *interpolatedNormal = new float3();
+	float4 *vertex0 = new float4();
+	float4 *vertex1 = new float4();
+	float4 *vertex2 = new float4();
+
+
+	for(unsigned int triangleIndex = 0; triangleIndex < 100; triangleIndex++) {
 		// '\r' returns to the beginning of the current line
 		std::cout << "Rasterising triangle " << (triangleIndex + 1) << "/" << triangleCount << "\r" << std::flush;
-
+		auto start = std::chrono::high_resolution_clock::now();
 		// As vertices are commonly reused within a model, rendering libraries use an
 		// index buffer which specifies the indices of the vertices in the vertex buffer
 		// which together make up the specific triangle.
@@ -243,9 +259,10 @@ void rasteriseTriangles( Mesh &mesh,
 		unsigned int index2 = mesh.indices[3 * triangleIndex + 2];
 
 		// We look up those triangles here
-		float4 *vertex0 = new float4(transformedVertexBuffer.at(index0));
-		float4 *vertex1 = new float4(transformedVertexBuffer.at(index1));
-		float4 *vertex2 = new float4(transformedVertexBuffer.at(index2));
+			// changed memory allocation
+		*vertex0 = float4(transformedVertexBuffer.at(index0));
+		*vertex1 = float4(transformedVertexBuffer.at(index1));
+		*vertex2 = float4(transformedVertexBuffer.at(index2));
 
 		// These triangles are still in so-called "clipping space". We first convert them
 		// to screen pixel coordinates
@@ -253,10 +270,20 @@ void rasteriseTriangles( Mesh &mesh,
 		*vertex1 = convertClippingSpace(*vertex1, width, height);
 		*vertex2 = convertClippingSpace(*vertex2, width, height);
 
+		
+
+		auto preloop = std::chrono::high_resolution_clock::now();
+		
+
+
+		std::chrono::duration<double> time_spanPixel_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
+		std::chrono::duration<double> time_spanNormal_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
+		std::chrono::duration<double> time_spanShader_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
 		// We iterate over each pixel on the screen
 		for(unsigned int y = 0; y < height; y++) {
 			for(unsigned int x = 0; x < width; x++) {
 				//Coordinate of the current pixel in the framebuffer, remember RGBA color code
+				auto insideLoop1 = std::chrono::high_resolution_clock::now();
 				unsigned int pixelBaseCoordinate = 4 * (x + y * width);
 
 				// Calculating the barycentric weights of the pixel in relation to the triangle
@@ -267,22 +294,34 @@ void rasteriseTriangles( Mesh &mesh,
 				// Now we can determine the depth of our pixel
 				float pixelDepth = getTrianglePixelDepth(*vertex0, *vertex1, *vertex2, weight0, weight1, weight2);
 
+				auto insideLoop2 = std::chrono::high_resolution_clock::now();
+
+
 				// Read the normals belonging to each vertex
-				float4 *normal0 = new float4(transformedNormalBuffer.at(index0));
-				float4 *normal1 = new float4(transformedNormalBuffer.at(index1));
-				float4 *normal2 = new float4(transformedNormalBuffer.at(index2));
+						//changed memory acces
+				*normal0 = float4(transformedNormalBuffer.at(index0));
+				*normal1 = float4(transformedNormalBuffer.at(index1));;
+				*normal2 = float4(transformedNormalBuffer.at(index2));;
+
+				float4 normal0Real = *normal0;
+				float4 normal1Real = *normal1;
+				float4 normal2Real = *normal2;
 
 				// But since a pixel can lie anywhere between the vertices, we compute an approximated normal
 				// at the pixel location by interpolating the ones from the vertices.
-				float3 *interpolatedNormal = new float3();
-				interpolatedNormal->x = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).x;
-				interpolatedNormal->y = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).y;
-				interpolatedNormal->z = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).z;
+				
+				interpolatedNormal->x = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).x;
+				interpolatedNormal->y = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).y;
+				interpolatedNormal->z = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).z;
 
 				// Cleanup
-				delete normal0;
-				delete normal1;
-				delete normal2;
+				//the same memory can be reused for every triangle
+					//	delete normal0;
+					//  delete normal1;
+					//  delete normal2;
+
+				
+
 
 				// This process can slightly change the length, so we normalise it here to make sure the lighting calculations
 				// appear correct.
@@ -293,12 +332,15 @@ void rasteriseTriangles( Mesh &mesh,
 				interpolatedNormal->x /= normalLength;
 				interpolatedNormal->y /= normalLength;
 				interpolatedNormal->z /= normalLength;
+				
+				auto insideLoop3 = std::chrono::high_resolution_clock::now();
 
 				// And we can now execute the fragment shader to compute this pixel's colour.
 				std::vector<unsigned char> pixelColour = runFragmentShader(*interpolatedNormal);
 
 				// Cleanup
-				delete interpolatedNormal;
+				//removed multiple allocations
+				//delete interpolatedNormal;
 
 				// Z-clipping discards pixels too close or too far from the camera
 				if(pixelDepth >= -1 && pixelDepth <= 1) {
@@ -310,20 +352,54 @@ void rasteriseTriangles( Mesh &mesh,
 							// save its depth to skip all next pixels underneath it
 							depthBuffer.at(y * width + x) = pixelDepth;
 							// Copy the calculated pixel colour into the frame buffer - RGBA
-							for (unsigned int i = 0; i < pixelColour.size(); i++) {
-									frameBuffer.at(pixelBaseCoordinate + i) = pixelColour.at(i);
-							}
+										//unrolled loop into 4 statements
+									frameBuffer.at(pixelBaseCoordinate + 0) = pixelColour.at(0);
+									frameBuffer.at(pixelBaseCoordinate + 1) = pixelColour.at(1);
+									frameBuffer.at(pixelBaseCoordinate + 2) = pixelColour.at(2);
+									frameBuffer.at(pixelBaseCoordinate + 3) = pixelColour.at(3);
+							
 						}
 					}
 				}
+				auto insideLoop4 = std::chrono::high_resolution_clock::now();
+				//time_spanPixel_avg += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop2  - insideLoop1);
+				//time_spanNormal_avg += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop3 - insideLoop2);
+				//time_spanPixel_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop2 - insideLoop1);
+				//time_spanNormal_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop3 - insideLoop2);
+				//time_spanShader_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop4 - insideLoop3);
+
 			}
+
+
+
 		}
 		// Cleanup
-		delete vertex0;
-		delete vertex1;
-		delete vertex2;
+		//delete vertex0;
+		//delete vertex1;
+		//delete vertex2;
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> time_span1 = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - start);
+	std::chrono::duration<double> time_span2 = std::chrono::duration_cast<std::chrono::duration<double>>(end - preloop);
+	std::cout << "time for 1 triangle preloop: " << time_span1.count() << " seconds." << std::endl;
+	std::cout << "time for 1 triangle loop: " << time_span2.count() << " seconds." << std::endl;
+
+	
+
+
+//	time_spanPixel_avg = time_spanPixel_avg / (width*height);
+//	time_spanNormal_avg = time_spanNormal_avg / (width*height);
+//	time_spanShader_avg = time_spanShader_avg / (width*height);
+
+	std::cout << "avg time in pixel part per triangle:  " << time_spanPixel_avg.count() << " seconds." << std::endl;
+	std::cout << "avg time in normal part per triangle:  " << time_spanNormal_avg.count() << " seconds." << std::endl;
+	std::cout << "avg time in shader part per triangle:  " << time_spanShader_avg.count() << " seconds." << std::endl;
 	}
 	// finish the progress output with a new line
+	std::cout << "actual avg time in pixel part per triangle:  " << time_spanPixel_avg2.count()/100 << " seconds." << std::endl;
+	std::cout << "actual avg time in normal part per triangle:  " << time_spanNormal_avg2.count()/100 << " seconds." << std::endl;
+	std::cout << "actual avg time in shader part per triangle:  " << time_spanShader_avg2.count()/100 << " seconds." << std::endl;
+
+
 	std::cout << std::endl;
 }
 
@@ -335,9 +411,7 @@ void rasteriseTriangles( Mesh &mesh,
  * @param height          height of the output image
  */
 void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsigned int height) {
-
-        auto start = std::chrono::high_resolution_clock::now();
-        // We first need to allocate some buffers.
+	// We first need to allocate some buffers.
 
 	// The framebuffer contains the image being rendered.
 	std::vector<unsigned char> frameBuffer;
@@ -375,13 +449,8 @@ void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsig
 	std::cout << "complete!" << std::endl;
 
 	rasteriseTriangles(mesh, transformedVertexBuffer, transformedNormalBuffer, frameBuffer, depthBuffer, width, height);
-        auto end = std::chrono::high_resolution_clock::now();
 
-        auto timeTaken = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
-
-        std::cout << "time spent function rasterise " << double(timeTaken) << " ns" <<std::endl;
-
-	std::cout << "Finished rendering!!" << std::endl;
+	std::cout << "Finished rendering!" << std::endl;
 
 	std::cout << "Writing image to '" << outputImageFile << "'..." << std::endl;
 
@@ -391,5 +460,4 @@ void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsig
 	{
 		std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
 	}
-
 }
