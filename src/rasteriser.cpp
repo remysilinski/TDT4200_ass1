@@ -2,8 +2,6 @@
 #include "utilities/lodepng.h"
 #include <vector>
 #include <chrono>
-
-
 // --- Overview ---
 
 // I'm going to assume most of you who are reading through this file have never worked with computer graphics before.
@@ -34,51 +32,51 @@
  * @param transformedNormalBuffer returned transformed normals
  */
 void runVertexShader( Mesh &mesh,
-					  std::vector<float4> &transformedVertexBuffer,
-					  std::vector<float4> &transformedNormalBuffer )
+                                          std::vector<float4> &transformedVertexBuffer,
+                                          std::vector<float4> &transformedNormalBuffer )
 {
-	// The & in front of the variable names cause the function to modify variables from the function
-	// calling this one, rather than making a copy of them.
+        // The & in front of the variable names cause the function to modify variables from the function
+        // calling this one, rather than making a copy of them.
 
-	// The matrices defined below are the ones used to transform the vertices and normals.
+        // The matrices defined below are the ones used to transform the vertices and normals.
 
-	// This projection matrix assumes a 16:9 aspect ratio, and an field of view (FOV) of 90 degrees.
-	mat4x4 projectionMatrix(
-		0.347270,   0, 			0, 		0,
-		0,	  		0.617370, 	0,		0,
-		0,	  		0,			-1, 	-0.2f,
-		0,	  		0,			-1,		0);
+        // This projection matrix assumes a 16:9 aspect ratio, and an field of view (FOV) of 90 degrees.
+        mat4x4 projectionMatrix(
+                0.347270,   0, 			0, 		0,
+                0,	  		0.617370, 	0,		0,
+                0,	  		0,			-1, 	-0.2f,
+                0,	  		0,			-1,		0);
 
-	mat4x4 viewMatrix(
-		0.5, 	0, 		0, 		5,
-		0, 		-0.5, 	0, 		30,
-		0, 		0, 		0.5, 	-55,
-		0, 		0, 		0, 		1);
+        mat4x4 viewMatrix(
+                0.5, 	0, 		0, 		5,
+                0, 		-0.5, 	0, 		30,
+                0, 		0, 		0.5, 	-55,
+                0, 		0, 		0, 		1);
 
-	mat4x4 normalMatrix(
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1);
+        mat4x4 normalMatrix(
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1);
 
-	mat4x4 MVP = projectionMatrix * viewMatrix;
+        mat4x4 MVP = projectionMatrix * viewMatrix;
 
-	for(unsigned int i = 0; i < transformedVertexBuffer.size(); i++) {
-		float4 transformed = MVP * mesh.vertices[i];
-		transformed.x /= transformed.w;
-		transformed.y /= transformed.w;
-		transformed.z /= transformed.w;
-		transformedVertexBuffer.at(i) = transformed;
-	}
+        for(unsigned int i = 0; i < transformedVertexBuffer.size(); i++) {
+                float4 transformed = MVP * mesh.vertices[i];
+                transformed.x /= transformed.w;
+                transformed.y /= transformed.w;
+                transformed.z /= transformed.w;
+                transformedVertexBuffer.at(i) = transformed;
+        }
 
-	for(unsigned int j = 0; j < transformedNormalBuffer.size(); j++) {
-		float4 normal;
-		normal.x = mesh.normals[j].x;
-		normal.y = mesh.normals[j].y;
-		normal.z = mesh.normals[j].z;
-		normal.w = 1;
-		transformedNormalBuffer.at(j) = normalMatrix * normal;
-	}
+        for(unsigned int j = 0; j < transformedNormalBuffer.size(); j++) {
+                float4 normal;
+                normal.x = mesh.normals[j].x;
+                normal.y = mesh.normals[j].y;
+                normal.z = mesh.normals[j].z;
+                normal.w = 1;
+                transformedNormalBuffer.at(j) = normalMatrix * normal;
+        }
 }
 
 /**
@@ -87,33 +85,37 @@ void runVertexShader( Mesh &mesh,
  * @param normal triangle pixel normal
  * @return		 colour of the pixel in RGBA
  */
-std::vector<unsigned char> runFragmentShader( float3 const normal )
+
+// Task 2.c) we changed the return type of this function std::vector to float4
+// and also change the way to access of pixelColour (pixelColour.x = ...)
+
+float4 runFragmentShader( float3 const normal )
 {
-	std::vector<unsigned char> pixelColour(4);
-	const float3 lightDirection(0.0f, 0.0f, 1.0f);
+        float4 pixelColour;
+        const float3 lightDirection(0.0f, 0.0f, 1.0f);
 
-	// Computing the dot product between the surface normal and a light
-	// direction gives a diffuse-like reflection. It looks more than
-	// good enough for a few static images.
-	float colour = normal.x * lightDirection.x +
-		normal.y * lightDirection.y +
-		normal.z * lightDirection.z;
+        // Computing the dot product between the surface normal and a light
+        // direction gives a diffuse-like reflection. It looks more than
+        // good enough for a few static images.
+        float colour = normal.x * lightDirection.x +
+                normal.y * lightDirection.y +
+                normal.z * lightDirection.z;
 
-	// We first scale the colour value from a range between 0 and 1,
-	// to between 0 and 255.
-	// Since single bytes are only able to go between 0 and 255,
-	// we subsequently clamp the colour to lie within that range.
-	unsigned char colourByte = (unsigned char) std::min(255.0f,
-		std::max(colour * 255.0f, 0.0f));
+        // We first scale the colour value from a range between 0 and 1,
+        // to between 0 and 255.
+        // Since single bytes are only able to go between 0 and 255,
+        // we subsequently clamp the colour to lie within that range.
+        unsigned char colourByte = (unsigned char) std::min(255.0f,
+                std::max(colour * 255.0f, 0.0f));
 
-	// And this writes the pixel to the pixelColor vector. The first three
-	// channels are red, green, and blue. The fourth represents transparency.
-	pixelColour.at(0) = colourByte;
-	pixelColour.at(1) = colourByte;
-	pixelColour.at(2) = colourByte;
-	pixelColour.at(3) = 255;
-	// This colour vector is supposed to go into the frame buffer
-	return pixelColour;
+        // And this writes the pixel to the pixelColor vector. The first three
+        // channels are red, green, and blue. The fourth represents transparency.
+        pixelColour.x = colourByte;
+        pixelColour.y = colourByte;
+        pixelColour.z = colourByte;
+        pixelColour.w = 255;
+        // This colour vector is supposed to go into the frame buffer
+        return pixelColour;
 }
 
 /**
@@ -129,18 +131,21 @@ std::vector<unsigned char> runFragmentShader( float3 const normal )
  * @param  w2 barycentric weight
  * @return    interpolated normal
  */
-float3 interpolateNormals( float4 const n0,
-						   float4 const n1,
-					 	   float4 const n2,
-					 	   float const w0,
-						   float const w1,
-						   float const w2 )
+
+// Task 2.d) we add the inline in front of functions which are called a lot
+
+inline float3 interpolateNormals( float4 const n0,
+                                                   float4 const n1,
+                                                   float4 const n2,
+                                                   float const w0,
+                                                   float const w1,
+                                                   float const w2 )
 {
-	float3 res;
-	res.x = w0 * n0.x + w1 * n1.x + w2 * n2.x;
-	res.y = w0 * n0.y + w1 * n1.y + w2 * n2.y;
-	res.z = w0 * n0.z + w1 * n1.z + w2 * n2.z;
-	return res;
+        float3 res;
+        res.x = w0 * n0.x + w1 * n1.x + w2 * n2.x;
+        res.y = w0 * n0.y + w1 * n1.y + w2 * n2.y;
+        res.z = w0 * n0.z + w1 * n1.z + w2 * n2.z;
+        return res;
 }
 
 /**
@@ -150,16 +155,19 @@ float3 interpolateNormals( float4 const n0,
  * @param  height screen height
  * @return        vertex in screen pixel coordinates
  */
-float4 convertClippingSpace( float4 const vertex,
-							 unsigned int const width,
-							 unsigned int const height )
+
+// Task 2.d) we add the inline in front of functions which are called a lot
+
+inline float4 convertClippingSpace( float4 const vertex,
+                                                         unsigned int const width,
+                                                         unsigned int const height )
 {
-	float4 res;
-	res.x = (vertex.x + 0.5f) * float(width);
-	res.y = (vertex.y + 0.5f) * float(height);
-	res.z = vertex.z;
-	res.w = vertex.w;
-	return res;
+        float4 res;
+        res.x = (vertex.x + 0.5f) * float(width);
+        res.y = (vertex.y + 0.5f) * float(height);
+        res.z = vertex.z;
+        res.w = vertex.w;
+        return res;
 }
 
 /**
@@ -176,19 +184,22 @@ float4 convertClippingSpace( float4 const vertex,
  * @param  y  screen pixel y-coordinate
  * @return    barycentric weights of the pixel in relation to the triangle vertices
  */
-float3 getTriangleBarycentricWeights( float4 const v0,
-									  float4 const v1,
-									  float4 const v2,
-									  unsigned int const x,
-									  unsigned int const y )
+
+// Task 2.d) we add the inline in front of functions which are called a lot
+
+inline float3 getTriangleBarycentricWeights( float4 const v0,
+                                                                          float4 const v1,
+                                                                          float4 const v2,
+                                                                          unsigned int const x,
+                                                                          unsigned int const y )
 {
-	float3 res;
-	res.x = (((v1.y - v2.y) * (x    - v2.x)) + ((v2.x - v1.x) * (y    - v2.y))) /
-			(((v1.y - v2.y) * (v0.x - v2.x)) + ((v2.x - v1.x) * (v0.y - v2.y)));
-	res.y = (((v2.y - v0.y) * (x    - v2.x)) + ((v0.x - v2.x) * (y    - v2.y))) /
-			(((v1.y - v2.y) * (v0.x - v2.x)) + ((v2.x - v1.x) * (v0.y - v2.y)));
-	res.z = 1 - res.x - res.y;
-	return res;
+        float3 res;
+        res.x = (((v1.y - v2.y) * (x    - v2.x)) + ((v2.x - v1.x) * (y    - v2.y))) /
+                        (((v1.y - v2.y) * (v0.x - v2.x)) + ((v2.x - v1.x) * (v0.y - v2.y)));
+        res.y = (((v2.y - v0.y) * (x    - v2.x)) + ((v0.x - v2.x) * (y    - v2.y))) /
+                        (((v1.y - v2.y) * (v0.x - v2.x)) + ((v2.x - v1.x) * (v0.y - v2.y)));
+        res.z = 1 - res.x - res.y;
+        return res;
 }
 
 /**
@@ -201,14 +212,17 @@ float3 getTriangleBarycentricWeights( float4 const v0,
  * @param  w2 barycentric weight
  * @return    pixel depth (z)
  */
-float getTrianglePixelDepth( float4 const v0,
-							 float4 const v1,
-							 float4 const v2,
-							 float const w0,
-							 float const w1,
-							 float const w2 )
+
+// Task 2.d) we add the inline in front of functions which are called a lot
+
+inline float getTrianglePixelDepth( float4 const v0,
+                                                         float4 const v1,
+                                                         float4 const v2,
+                                                         float const w0,
+                                                         float const w1,
+                                                         float const w2 )
 {
-	return w0 * v0.z + w1 * v1.z + w2 * v2.z;
+        return w0 * v0.z + w1 * v1.z + w2 * v2.z;
 }
 
 /**
@@ -229,178 +243,167 @@ void rasteriseTriangles( Mesh &mesh,
                          unsigned int width,
                          unsigned int height )
 {
-	// We rasterise one triangle at a time
-	unsigned int triangleCount = mesh.indexCount / 3;
-	auto test = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> time_spanPixel_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
-	std::chrono::duration<double> time_spanNormal_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
-	std::chrono::duration<double> time_spanShader_avg2 = std::chrono::duration_cast<std::chrono::duration<double>>(test-test);
+
+        // Task 2.c)
+        // one time memory allocation
+        float4 *normal0 = new float4();
+        float4 *normal1 = new float4();
+        float4 *normal2 = new float4();
+        float3 *interpolatedNormal = new float3();
+        float4 *vertex0 = new float4();
+        float4 *vertex1 = new float4();
+        float4 *vertex2 = new float4();
+
+        //Task 1.b) Counter for internal profiling
+        //auto test = std::chrono::high_resolution_clock::now();
+        //auto averageTime = std::chrono::duration_cast<std::chrono::milliseconds>(test-test).count();
 
 
-	// one time memory allocation
-	float4 *normal0 = new float4();
-	float4 *normal1 = new float4();
-	float4 *normal2 = new float4();
-	float3 *interpolatedNormal = new float3();
-	float4 *vertex0 = new float4();
-	float4 *vertex1 = new float4();
-	float4 *vertex2 = new float4();
+        // We rasterise one triangle at a time
+        unsigned int triangleCount = mesh.indexCount / 3;
+        for(unsigned int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+                // '\r' returns to the beginning of the current line
+                std::cout << "Rasterising triangle " << (triangleIndex + 1) << "/" << triangleCount << "\r" << std::flush;
 
-
-	for(unsigned int triangleIndex = 0; triangleIndex < 100; triangleIndex++) {
-		// '\r' returns to the beginning of the current line
-		std::cout << "Rasterising triangle " << (triangleIndex + 1) << "/" << triangleCount << "\r" << std::flush;
-		auto start = std::chrono::high_resolution_clock::now();
-		// As vertices are commonly reused within a model, rendering libraries use an
-		// index buffer which specifies the indices of the vertices in the vertex buffer
-		// which together make up the specific triangle.
-		unsigned int index0 = mesh.indices[3 * triangleIndex + 0];
-		unsigned int index1 = mesh.indices[3 * triangleIndex + 1];
-		unsigned int index2 = mesh.indices[3 * triangleIndex + 2];
-
-		// We look up those triangles here
-			// changed memory allocation
-		*vertex0 = float4(transformedVertexBuffer.at(index0));
-		*vertex1 = float4(transformedVertexBuffer.at(index1));
-		*vertex2 = float4(transformedVertexBuffer.at(index2));
-
-		// These triangles are still in so-called "clipping space". We first convert them
-		// to screen pixel coordinates
-		*vertex0 = convertClippingSpace(*vertex0, width, height);
-		*vertex1 = convertClippingSpace(*vertex1, width, height);
-		*vertex2 = convertClippingSpace(*vertex2, width, height);
-
-		
-
-		auto preloop = std::chrono::high_resolution_clock::now();
-		
-
-
-		std::chrono::duration<double> time_spanPixel_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
-		std::chrono::duration<double> time_spanNormal_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
-		std::chrono::duration<double> time_spanShader_avg = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - preloop);
-		// We iterate over each pixel on the screen
-		for(unsigned int y = 0; y < height; y++) {
-			for(unsigned int x = 0; x < width; x++) {
-				//Coordinate of the current pixel in the framebuffer, remember RGBA color code
-				auto insideLoop1 = std::chrono::high_resolution_clock::now();
-				unsigned int pixelBaseCoordinate = 4 * (x + y * width);
-
-				// Calculating the barycentric weights of the pixel in relation to the triangle
-				float weight0 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).x;
-				float weight1 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).y;
-				float weight2 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).z;
-
-				// Now we can determine the depth of our pixel
-				float pixelDepth = getTrianglePixelDepth(*vertex0, *vertex1, *vertex2, weight0, weight1, weight2);
-
-				auto insideLoop2 = std::chrono::high_resolution_clock::now();
-
-
-				// Read the normals belonging to each vertex
-						//changed memory acces
-				*normal0 = float4(transformedNormalBuffer.at(index0));
-				*normal1 = float4(transformedNormalBuffer.at(index1));;
-				*normal2 = float4(transformedNormalBuffer.at(index2));;
-
-				float4 normal0Real = *normal0;
-				float4 normal1Real = *normal1;
-				float4 normal2Real = *normal2;
-
-				// But since a pixel can lie anywhere between the vertices, we compute an approximated normal
-				// at the pixel location by interpolating the ones from the vertices.
-				
-				interpolatedNormal->x = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).x;
-				interpolatedNormal->y = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).y;
-				interpolatedNormal->z = interpolateNormals(normal0Real, normal1Real, normal2Real, weight0, weight1, weight2).z;
-
-				// Cleanup
-				//the same memory can be reused for every triangle
-					//	delete normal0;
-					//  delete normal1;
-					//  delete normal2;
-
-				
-
-
-				// This process can slightly change the length, so we normalise it here to make sure the lighting calculations
-				// appear correct.
-				float normalLength = std::sqrt( interpolatedNormal->x * interpolatedNormal->x +
-					interpolatedNormal->y * interpolatedNormal->y +
-					interpolatedNormal->z * interpolatedNormal->z );
-
-				interpolatedNormal->x /= normalLength;
-				interpolatedNormal->y /= normalLength;
-				interpolatedNormal->z /= normalLength;
-				
-				auto insideLoop3 = std::chrono::high_resolution_clock::now();
-
-				// And we can now execute the fragment shader to compute this pixel's colour.
-				std::vector<unsigned char> pixelColour = runFragmentShader(*interpolatedNormal);
-
-				// Cleanup
-				//removed multiple allocations
-				//delete interpolatedNormal;
-
-				// Z-clipping discards pixels too close or too far from the camera
-				if(pixelDepth >= -1 && pixelDepth <= 1) {
-					// The weights have the nice property that if only one is negative, the pixel lies outside the triangle
-					if(weight0 >= 0 && weight1 >= 0 && weight2 >= 0) {
-						//Have we drawn a pixel above the current?
-						if(pixelDepth < depthBuffer.at(y * width + x)) {
-							// This pixel is going into the frame buffer,
-							// save its depth to skip all next pixels underneath it
-							depthBuffer.at(y * width + x) = pixelDepth;
-							// Copy the calculated pixel colour into the frame buffer - RGBA
-										//unrolled loop into 4 statements
-									frameBuffer.at(pixelBaseCoordinate + 0) = pixelColour.at(0);
-									frameBuffer.at(pixelBaseCoordinate + 1) = pixelColour.at(1);
-									frameBuffer.at(pixelBaseCoordinate + 2) = pixelColour.at(2);
-									frameBuffer.at(pixelBaseCoordinate + 3) = pixelColour.at(3);
-							
-						}
-					}
-				}
-				auto insideLoop4 = std::chrono::high_resolution_clock::now();
-				//time_spanPixel_avg += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop2  - insideLoop1);
-				//time_spanNormal_avg += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop3 - insideLoop2);
-				//time_spanPixel_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop2 - insideLoop1);
-				//time_spanNormal_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop3 - insideLoop2);
-				//time_spanShader_avg2 += std::chrono::duration_cast<std::chrono::duration<double>>(insideLoop4 - insideLoop3);
-
-			}
+                //Task 1.b) Counter for internal profiling
+                // auto start = std::chrono::high_resolution_clock::now();
 
 
 
-		}
-		// Cleanup
-		//delete vertex0;
-		//delete vertex1;
-		//delete vertex2;
-	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> time_span1 = std::chrono::duration_cast<std::chrono::duration<double>>(preloop - start);
-	std::chrono::duration<double> time_span2 = std::chrono::duration_cast<std::chrono::duration<double>>(end - preloop);
-	std::cout << "time for 1 triangle preloop: " << time_span1.count() << " seconds." << std::endl;
-	std::cout << "time for 1 triangle loop: " << time_span2.count() << " seconds." << std::endl;
+                // As vertices are commonly reused within a model, rendering libraries use an
+                // index buffer which specifies the indices of the vertices in the vertex buffer
+                // which together make up the specific triangle.
+                unsigned int index0 = mesh.indices[3 * triangleIndex + 0];
+                unsigned int index1 = mesh.indices[3 * triangleIndex + 1];
+                unsigned int index2 = mesh.indices[3 * triangleIndex + 2];
 
-	
+                // We look up those triangles here
+                        // changed memory allocation
+                *vertex0 = float4(transformedVertexBuffer.at(index0));
+                *vertex1 = float4(transformedVertexBuffer.at(index1));
+                *vertex2 = float4(transformedVertexBuffer.at(index2));
+
+                // These triangles are still in so-called "clipping space". We first convert them
+                // to screen pixel coordinates
+                *vertex0 = convertClippingSpace(*vertex0, width, height);
+                *vertex1 = convertClippingSpace(*vertex1, width, height);
+                *vertex2 = convertClippingSpace(*vertex2, width, height);
+
+                //Task 2.e) 2nd Algorithmic optimization --> apply the process not for all pixels but for pixels which define a box around the triangles
+
+                unsigned int ymin = std::max((int)std::floor(std::min(std::min(vertex0->y,vertex1->y),vertex2->y)),0);
+                unsigned int ymax = std::min((unsigned int)std::ceil(std::max(std::max(vertex0->y,vertex1->y),vertex2->y)),height);
+                unsigned int xmin = std::max((int)std::floor(std::min(std::min(vertex0->x,vertex1->x),vertex2->x)),0);
+                unsigned int xmax = std::min((unsigned int)std::ceil(std::max(std::max(vertex0->x,vertex1->x),vertex2->x)),width);
+
+                //Task 1.b) Counter for internal profiling
+                // auto preloop = std::chrono::high_resolution_clock::now();
 
 
-//	time_spanPixel_avg = time_spanPixel_avg / (width*height);
-//	time_spanNormal_avg = time_spanNormal_avg / (width*height);
-//	time_spanShader_avg = time_spanShader_avg / (width*height);
+                // We iterate over each pixel on the screen
+                for(unsigned int y = ymin; y < ymax; y++) {
+                        for(unsigned int x = xmin; x < xmax; x++) {
+                                //Coordinate of the current pixel in the framebuffer, remember RGBA color code
+                                unsigned int pixelBaseCoordinate = 4 * (x + y * width);
 
-	std::cout << "avg time in pixel part per triangle:  " << time_spanPixel_avg.count() << " seconds." << std::endl;
-	std::cout << "avg time in normal part per triangle:  " << time_spanNormal_avg.count() << " seconds." << std::endl;
-	std::cout << "avg time in shader part per triangle:  " << time_spanShader_avg.count() << " seconds." << std::endl;
-	}
-	// finish the progress output with a new line
-	std::cout << "actual avg time in pixel part per triangle:  " << time_spanPixel_avg2.count()/100 << " seconds." << std::endl;
-	std::cout << "actual avg time in normal part per triangle:  " << time_spanNormal_avg2.count()/100 << " seconds." << std::endl;
-	std::cout << "actual avg time in shader part per triangle:  " << time_spanShader_avg2.count()/100 << " seconds." << std::endl;
+                                // Calculating the barycentric weights of the pixel in relation to the triangle
+                                float weight0 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).x;
+                                float weight1 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).y;
+                                float weight2 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).z;
 
 
-	std::cout << std::endl;
+                                //Task 2.e) 1st algorithmic optimization --> We groups conditions if and put them at the beginning of the code
+                                // The weights have the nice property that if only one is negative, the pixel lies outside the triangle
+                                if(weight0 >= 0 && weight1 >= 0 && weight2 >= 0) {
+
+
+
+                                    // Now we can determine the depth of our pixel
+                                    float pixelDepth = getTrianglePixelDepth(*vertex0, *vertex1, *vertex2, weight0, weight1, weight2);
+                                    // Z-clipping discards pixels too close or too far from the camera
+
+                                    if(pixelDepth >= -1 && pixelDepth <= 1 && (pixelDepth < depthBuffer.at(y * width + x))) {
+
+
+
+                                        // Read the normals belonging to each vertex
+                                                        //changed memory acces
+                                        *normal0 = float4(transformedNormalBuffer.at(index0));
+                                        *normal1 = float4(transformedNormalBuffer.at(index1));
+                                        *normal2 = float4(transformedNormalBuffer.at(index2));
+
+                                        // But since a pixel can lie anywhere between the vertices, we compute an approximated normal
+                                        // at the pixel location by interpolating the ones from the vertices.
+                                        //float3 *interpolatedNormal = new float3();
+                                        interpolatedNormal->x = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).x;
+                                        interpolatedNormal->y = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).y;
+                                        interpolatedNormal->z = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).z;
+
+                                        // Cleanup
+                                        //delete normal0;
+                                        //delete normal1;
+                                        //delete normal2;
+
+                                        // This process can slightly change the length, so we normalise it here to make sure the lighting calculations
+                                        // appear correct.
+                                        float normalLength = std::sqrt( interpolatedNormal->x * interpolatedNormal->x +
+                                                interpolatedNormal->y * interpolatedNormal->y +
+                                                interpolatedNormal->z * interpolatedNormal->z );
+
+                                        interpolatedNormal->x /= normalLength;
+                                        interpolatedNormal->y /= normalLength;
+                                        interpolatedNormal->z /= normalLength;
+
+                                        // And we can now execute the fragment shader to compute this pixel's colour.
+                                        float4 pixelColour = runFragmentShader(*interpolatedNormal);
+
+                                        // Cleanup
+                                        //delete interpolatedNormal;
+
+
+                                        // This pixel is going into the frame buffer,
+                                        // save its depth to skip all next pixels underneath it
+                                        depthBuffer.at(y * width + x) = pixelDepth;
+                                        // Copy the calculated pixel colour into the frame buffer - RGBA
+                                        //unrolled loop into 4 statements
+
+                                        //Task 2.b) loop optimization
+                                        frameBuffer.at(pixelBaseCoordinate + 0) = pixelColour.x;
+                                        frameBuffer.at(pixelBaseCoordinate + 1) = pixelColour.y;
+                                        frameBuffer.at(pixelBaseCoordinate + 2) = pixelColour.z;
+                                        frameBuffer.at(pixelBaseCoordinate + 3) = pixelColour.w;
+                                   }
+                              }
+
+
+
+                        }
+                }
+                // Cleanup
+                //delete vertex0;
+                //delete vertex1;
+                //delete vertex2;
+
+                //Task 1.b) Counter for internal profiling
+               /**
+                auto end = std::chrono::high_resolution_clock::now();
+                auto time_span1 = std::chrono::duration_cast<std::chrono::milliseconds>(preloop - start).count();
+                auto time_span2 = std::chrono::duration_cast<std::chrono::milliseconds>(end - preloop).count();
+
+                averageTime += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+
+                std::cout << "time for 1 triangle preloop: " << time_span1 << " milliseconds." << std::endl;
+                std::cout << "time for 1 triangle loop: " << time_span2 << " milliseconds." << std::endl;
+                */
+        }
+        //Task 1.b) Counter for internal profiling
+        /**
+        averageTime = averageTime / triangleCount;
+        std::cout << "Average time: " << averageTime << " milliseconds." << std::endl;
+        */
+        // finish the progress output with a new line
+        std::cout << std::endl;
 }
 
 /**
@@ -411,53 +414,69 @@ void rasteriseTriangles( Mesh &mesh,
  * @param height          height of the output image
  */
 void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsigned int height) {
-	// We first need to allocate some buffers.
 
-	// The framebuffer contains the image being rendered.
-	std::vector<unsigned char> frameBuffer;
-	frameBuffer.resize(width * height * 4, 0);
 
-	// The depth buffer is used to make sure that objects closer to the camera occlude/obscure objects that are behind it
-	std::vector<float> depthBuffer;
-	depthBuffer.resize(width * height, 1);
+        //Task 1.b) Counter for internal profiling
+        //start chrono
+        auto start2 = std::chrono::high_resolution_clock::now();
 
-	// And these two buffers store vertices and normals processed by the vertex shader.
-	std::vector<float4> transformedVertexBuffer;
-	transformedVertexBuffer.resize(mesh.vertexCount);
+        // We first need to allocate some buffers.
 
-	std::vector<float4> transformedNormalBuffer;
-	transformedNormalBuffer.resize(mesh.vertexCount);
+        // The framebuffer contains the image being rendered.
+        std::vector<unsigned char> frameBuffer;
+        frameBuffer.resize(width * height * 4, 0);
 
-	// Initializing the framebuffer with RGBA (0,0,0,255), black, no
-	// transparency
-	for (unsigned int i = 0; i < 4; i++) {
-		for (unsigned int y = 0; y < height; y++) {
-			for(unsigned int x = 0; x < width; x++) {
-				frameBuffer.at(4 * ( x + y * width ) + i) = 0;
-				if ( i == 3 ) {
-					//Transparency
-					frameBuffer.at(4 * ( x + y * width ) + i) = 255;
-				}
-			}
-		}
-	}
+        // The depth buffer is used to make sure that objects closer to the camera occlude/obscure objects that are behind it
+        std::vector<float> depthBuffer;
+        depthBuffer.resize(width * height, 1);
 
-	std::cout << "Running the vertex shader... ";
+        // And these two buffers store vertices and normals processed by the vertex shader.
+        std::vector<float4> transformedVertexBuffer;
+        transformedVertexBuffer.resize(mesh.vertexCount);
 
-	runVertexShader(mesh, transformedVertexBuffer, transformedNormalBuffer);
+        std::vector<float4> transformedNormalBuffer;
+        transformedNormalBuffer.resize(mesh.vertexCount);
 
-	std::cout << "complete!" << std::endl;
 
-	rasteriseTriangles(mesh, transformedVertexBuffer, transformedNormalBuffer, frameBuffer, depthBuffer, width, height);
 
-	std::cout << "Finished rendering!" << std::endl;
+        // Initializing the framebuffer with RGBA (0,0,0,255), black, no
+        // transparency
+        for (unsigned int i = 0; i < 4; i++) {
+                for (unsigned int y = 0; y < height; y++) {
+                        for(unsigned int x = 0; x < width; x++) {
+                                frameBuffer.at(4 * ( x + y * width ) + i) = 0;
+                                if ( i == 3 ) {
+                                        //Transparency
+                                        frameBuffer.at(4 * ( x + y * width ) + i) = 255;
+                                }
+                        }
+                }
+        }
 
-	std::cout << "Writing image to '" << outputImageFile << "'..." << std::endl;
+        std::cout << "Running the vertex shader... ";
 
-	unsigned error = lodepng::encode(outputImageFile, frameBuffer, width, height);
+        runVertexShader(mesh, transformedVertexBuffer, transformedNormalBuffer);
 
-	if(error)
-	{
-		std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
-	}
+        std::cout << "complete!" << std::endl;
+
+        rasteriseTriangles(mesh, transformedVertexBuffer, transformedNormalBuffer, frameBuffer, depthBuffer, width, height);
+
+        //Task 1.b) Counter for internal profiling
+        //end chrono
+        auto end2 = std::chrono::high_resolution_clock::now();
+        //calcul time
+        auto timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
+
+        std::cout << "time taken: " << double(timeTaken) << std::endl;
+
+        std::cout << "Finished rendering!" << std::endl;
+
+        std::cout << "Writing image to '" << outputImageFile << "'..." << std::endl;
+
+        unsigned error = lodepng::encode(outputImageFile, frameBuffer, width, height);
+
+        if(error)
+        {
+                std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
+        }
 }
